@@ -6,15 +6,12 @@
 """ Userbot module for executing code and terminal commands from Telegram. """
 
 import asyncio
-import inspect
 import io
 import re
 import sys
 import traceback
 from os import remove
 from sys import executable
-
-from telethon import events, errors, functions, types
 
 from userbot import BOTLOG, BOTLOG_CHATID, CMD_HELP, TERM_ALIAS
 from userbot.events import register
@@ -26,10 +23,10 @@ async def _(event):
         return
     s_m_ = await event.edit("Processing ...")
     cmd = event.text.split(" ", maxsplit=1)[1]
-    reply_to_id = event.message.id
+    event.message.id
     if event.reply_to_msg_id:
-        reply_to_id = event.reply_to_msg_id
- 
+        event.reply_to_msg_id
+
     old_stderr = sys.stderr
     old_stdout = sys.stdout
     redirected_output = sys.stdout = io.StringIO()
@@ -59,10 +56,7 @@ async def _(event):
     if len(final_output) >= 4096:
         with io.BytesIO(str.encode(final_output)) as out_file:
             out_file.name = "eval.text"
-            await s_m_.reply(
-                cmd,
-                file=out_file
-            )
+            await s_m_.reply(cmd, file=out_file)
             await event.delete()
     else:
         await s_m_.edit(final_output)
@@ -70,14 +64,17 @@ async def _(event):
 
 async def aexec(code, smessatatus):
     message = event = smessatatus
-    p = lambda _x: print(slitu.yaml_format(_x))
+
+    def p(_x):
+        return print(slitu.yaml_format(_x))
+
     reply = await event.get_reply_message()
     exec(
-        f'async def __aexec(message, reply, client, p): ' +
-        '\n event = smessatatus = message' +
-        ''.join(f'\n {l}' for l in code.split('\n'))
+        f"async def __aexec(message, reply, client, p): "
+        + "\n event = smessatatus = message"
+        + "".join(f"\n {l}" for l in code.split("\n"))
     )
-    return await locals()['__aexec'](message, reply, message.client, p)
+    return await locals()["__aexec"](message, reply, message.client, p)
 
 
 @register(outgoing=True, pattern=r"^\.exec(?: |$|\n)([\s\S]*)")

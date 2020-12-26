@@ -23,6 +23,7 @@ from telethon.tl.types import DocumentAttributeVideo
 from userbot import CMD_HELP, LOGS, TEMP_DOWNLOAD_DIRECTORY
 from userbot.events import register
 from userbot.utils import humanbytes, progress
+from userbot.utils.FastTelethon import upload_file
 
 
 @register(pattern=r"^\.download(?: |$)(.*)", outgoing=True)
@@ -104,21 +105,14 @@ async def download(target_file):
 
 def get_video_thumb(file, output=None, width=90):
     """ Get video thumbnail """
-    metadata = extractMetadata(createParser(file))
-    durations = str(
-        int((0, metadata.get("duration").seconds)[metadata.has("duration")] / 2)
-    )
+    extractMetadata(createParser(file))
     popen = subprocess.Popen(
-        [
-            f"ffmpeg -i {file} -ss {durations} -filter:v scale={width}:-1 -vframes 1 {output}"
-        ],
+        [f"ffmpeg -i {file} -ss 00:00:01.000 -vframes 1 {output}"],
         shell=True,
         stdout=subprocess.PIPE,
         stderr=subprocess.DEVNULL,
     )
-    if not popen.returncode and os.path.lexists(file):
-        return output
-    return None
+    return output
 
 
 @register(pattern=r"^\.upload (.*)", outgoing=True)
@@ -129,7 +123,18 @@ async def upload(u_event):
     if input_str in ("userbot.session", "config.env"):
         return await u_event.edit("`That's a dangerous operation! Not Permitted!`")
     if os.path.exists(input_str):
+        thumb = get_video_thumb(input_str, output="thumb.png")
         file_name = input_str.split("/")[-1]
+        d_time = time.time()
+        with open(input_str, "rb") as f:
+            result = await upload_file(
+                client=u_event.client,
+                file=f,
+                name=file_name,
+                progress_callback=lambda d, t: asyncio.get_event_loop().create_task(
+                    progress(d, t, u_event, d_time, "[FILE - UPLOAD]", input_str)
+                ),
+            )
         if input_str.lower().endswith(("mp4", "mkv", "webm")):
             metadata = extractMetadata(createParser(input_str))
             duration = 0
@@ -141,11 +146,10 @@ async def upload(u_event):
                 width = metadata.get("width")
             if metadata.has("height"):
                 height = metadata.get("height")
-            thumb = get_video_thumb(input_str, output="thumb.png")
             c_time = time.time()
             await u_event.client.send_file(
                 u_event.chat_id,
-                input_str,
+                result,
                 thumb=thumb,
                 caption=file_name,
                 force_document=False,
@@ -164,12 +168,13 @@ async def upload(u_event):
                     progress(d, t, u_event, c_time, "[UPLOAD]", input_str)
                 ),
             )
+            os.remove(thumb)
             await u_event.edit("Uploaded successfully !!")
         else:
             c_time = time.time()
             await u_event.client.send_file(
                 u_event.chat_id,
-                input_str,
+                result,
                 caption=file_name,
                 force_document=False,
                 allow_cache=False,
