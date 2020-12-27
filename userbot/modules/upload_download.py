@@ -68,7 +68,7 @@ async def download(target_file):
                     "Status"
                     f"\n**{status}**... | {progress_str}"
                     f"\n{humanbytes(downloaded)} of {humanbytes(total_length)}"
-                    f" @ {speed}"
+                    f" @ {humanbytes(speed)}"
                     f"\n`ETA` -> {estimated_total_time}"
                 )
 
