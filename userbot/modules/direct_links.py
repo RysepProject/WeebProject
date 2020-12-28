@@ -379,18 +379,15 @@ async def uptobox(request, url: str) -> str:
 
 
 async def useragent():
-    """
-    useragent random setter
-    """
-    useragents = BeautifulSoup(
-        requests.get(
-            "https://developers.whatismybrowser.com/"
-            "useragents/explore/operating_system_name/android/"
-        ).content,
-        "lxml",
-    ).findAll("td", {"class": "useragent"})
-    user_agent = choice(useragents)
-    return user_agent.text
+    req = requests.get('https://user-agents.net/random')
+    soup = BeautifulSoup(req.text, 'html.parser')
+    agent = soup.find('article')
+    if agent:
+        agent = agent.find('li')
+        if agent:
+            return agent.find('a').text.replace('"', '')
+
+    return 'Googlebot/2.1 (+http://www.google.com/bot.html)'
 
 
 CMD_HELP.update(
