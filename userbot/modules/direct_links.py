@@ -13,7 +13,6 @@ import re
 import urllib.parse
 from asyncio import create_subprocess_shell as asyncSubprocess
 from asyncio.subprocess import PIPE as asyncPIPE
-from random import choice
 
 import aiohttp
 import requests
@@ -379,15 +378,15 @@ async def uptobox(request, url: str) -> str:
 
 
 async def useragent():
-    req = requests.get('https://user-agents.net/random')
-    soup = BeautifulSoup(req.text, 'html.parser')
-    agent = soup.find('article')
+    req = requests.get("https://user-agents.net/random")
+    soup = BeautifulSoup(req.text, "html.parser")
+    agent = soup.find("article")
     if agent:
-        agent = agent.find('li')
+        agent = agent.find("li")
         if agent:
-            return agent.find('a').text.replace('"', '')
+            return agent.find("a").text.replace('"', "")
 
-    return 'Googlebot/2.1 (+http://www.google.com/bot.html)'
+    return "Googlebot/2.1 (+http://www.google.com/bot.html)"
 
 
 CMD_HELP.update(
