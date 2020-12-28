@@ -23,7 +23,7 @@ from telethon.tl.types import DocumentAttributeVideo
 from userbot import CMD_HELP, LOGS, TEMP_DOWNLOAD_DIRECTORY
 from userbot.events import register
 from userbot.utils import humanbytes, progress
-from userbot.utils.FastTelethon import upload_file
+from userbot.utils.FastTelethon import download_file, upload_file
 
 
 @register(pattern=r"^\.download(?: |$)(.*)", outgoing=True)
@@ -85,19 +85,25 @@ async def download(target_file):
             await target_file.edit("Incorrect URL\n{}".format(url))
     elif target_file.reply_to_msg_id:
         try:
+            replied = await target_file.get_reply_message()
+            file = replied.document
+            file_name = replied.document.attributes[-1].file_name
+            outdir = TEMP_DOWNLOAD_DIRECTORY + file_name
             c_time = time.time()
-            downloaded_file_name = await target_file.client.download_media(
-                await target_file.get_reply_message(),
-                TEMP_DOWNLOAD_DIRECTORY,
-                progress_callback=lambda d, t: asyncio.get_event_loop().create_task(
-                    progress(d, t, target_file, c_time, "[DOWNLOAD]")
-                ),
-            )
+            with open(outdir, "wb") as f:
+                result = await download_file(
+                    client=target_file.client,
+                    location=file,
+                    out=f,
+                    progress_callback=lambda d, t: asyncio.get_event_loop().create_task(
+                        progress(d, t, target_file, c_time, "[DOWNLOAD]", input_str)
+                    ),
+                )
         except Exception as e:  # pylint:disable=C0103,W0703
             await target_file.edit(str(e))
         else:
             await target_file.edit(
-                "Downloaded to `{}` successfully !!".format(downloaded_file_name)
+                "Downloaded to `{}` successfully !!".format(result.name)
             )
     else:
         await target_file.edit("Reply to a message to download to my local server.")
@@ -125,14 +131,14 @@ async def upload(u_event):
     if os.path.exists(input_str):
         thumb = get_video_thumb(input_str, output="thumb.png")
         file_name = input_str.split("/")[-1]
-        d_time = time.time()
+        c_time = time.time()
         with open(input_str, "rb") as f:
             result = await upload_file(
                 client=u_event.client,
                 file=f,
                 name=file_name,
                 progress_callback=lambda d, t: asyncio.get_event_loop().create_task(
-                    progress(d, t, u_event, d_time, "[FILE - UPLOAD]", input_str)
+                    progress(d, t, u_event, c_time, "[FILE - UPLOAD]", input_str)
                 ),
             )
         if input_str.lower().endswith(("mp4", "mkv", "webm")):
@@ -146,7 +152,6 @@ async def upload(u_event):
                 width = metadata.get("width")
             if metadata.has("height"):
                 height = metadata.get("height")
-            c_time = time.time()
             await u_event.client.send_file(
                 u_event.chat_id,
                 result,
@@ -164,14 +169,10 @@ async def upload(u_event):
                         supports_streaming=True,
                     )
                 ],
-                progress_callback=lambda d, t: asyncio.get_event_loop().create_task(
-                    progress(d, t, u_event, c_time, "[UPLOAD]", input_str)
-                ),
             )
             os.remove(thumb)
             await u_event.edit("Uploaded successfully !!")
         else:
-            c_time = time.time()
             await u_event.client.send_file(
                 u_event.chat_id,
                 result,
@@ -179,9 +180,6 @@ async def upload(u_event):
                 force_document=False,
                 allow_cache=False,
                 reply_to=u_event.message.id,
-                progress_callback=lambda d, t: asyncio.get_event_loop().create_task(
-                    progress(d, t, u_event, c_time, "[UPLOAD]", input_str)
-                ),
             )
             await u_event.edit("Uploaded successfully !!")
     else:
